@@ -1,0 +1,93 @@
+version: '3.8'
+services:
+  league-api:
+    container_name: league-api
+    image: node:18-alpine
+    ports:
+      - 3000:3000
+    networks:
+      - backend_network
+    volumes:
+      - .:/usr/src/app
+      - /usr/src/app/node_modules
+    working_dir: /usr/src/app
+    environment:
+      - FOOT_BALL_API_TOKEN=${FOOT_BALL_API_TOKEN}
+    env_file:
+      - .env
+    restart: unless-stopped
+    depends_on:
+      - postgres
+    command: sh -c "npm install && npm run start:dev"
+    dns:
+      # Set the DNS server to be the LocalStack container
+      - 10.0.2.20
+
+  postgres:
+    container_name: postgres-db
+    image: postgres:14
+    ports:
+      - 5432:5432
+    networks:
+      - backend_network
+    env_file:
+      - .env
+    restart: unless-stopped
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    dns:
+      # Set the DNS server to be the LocalStack container
+      - 10.0.2.20
+
+  redis:
+    container_name: redis-db
+    image: redis
+    ports:
+      - 6379:6379
+    networks:
+      - backend_network
+    env_file:
+      - .env
+    restart: unless-stopped
+    command: /bin/sh -c "redis-server --requirepass $$REDIS_PASSWORD"
+    dns:
+      # Set the DNS server to be the LocalStack container
+      - 10.0.2.20
+    volumes:
+      - redis:/data
+
+  localstack:
+    container_name: 'localstack'
+    image: localstack/localstack
+    ports:
+      - '127.0.0.1:4566:4566' # LocalStack Gateway
+      - '127.0.0.1:4510-4559:4510-4559' # external services port range
+    env_file:
+      - .env
+    environment:
+      - DEBUG=${DEBUG}
+      - DOCKER_HOST=unix:///var/run/docker.sock
+    volumes:
+      - ./localstack-script.sh:/etc/localstack/init/ready.d/init-aws.sh
+      - localstack_data:/var/lib/localstack
+      - '/var/run/docker.sock:/var/run/docker.sock'
+    networks:
+      backend_network:
+        ipv4_address: 10.0.2.20
+
+networks:
+  backend_network:
+    driver: bridge
+    ipam:
+      config:
+        # Specify the subnet range for IP address allocation
+        - subnet: 10.0.2.0/24
+
+volumes:
+  localstack_data:
+    name: league-localstack
+  postgres_data:
+    name: league-postgres-db
+  redis:
+    name: alfo-redis
+    driver: local
