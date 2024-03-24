@@ -46,6 +46,7 @@ That way we manage not cross the frecuency limit imposed by the API.
 
 ```bash
 # clone the repo and run the following
+$ export FOOT_BALL_API_TOKEN=YorToken
 $ docker compose up
 # or
 $ docker compose up -d
